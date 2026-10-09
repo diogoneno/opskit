@@ -36,7 +36,7 @@ The table is generated from `src/tools/registry.ts` by `npm run readme:tools -- 
 | [HTTP request builder](https://diogoneno.github.io/opskit/#/http) | Network | Build a request, copy it as curl, or send it from your browser when you click Send. **Network:** sends only to the URL you enter, on click. |
 | [Kubernetes Secret](https://diogoneno.github.io/opskit/#/k8s-secret) | Containers | Encode KEY=value pairs into a Secret manifest, or decode a pasted Secret. |
 | [docker run → Compose](https://diogoneno.github.io/opskit/#/docker-compose) | Containers | Convert a `docker run` command into a Compose service. |
-| [Vulnerability lookup (OSV)](https://diogoneno.github.io/opskit/#/osv) | Security | Check package-lock.json, requirements.txt or a package list against OSV.dev. **Network:** sends package names and versions to OSV.dev, on click. |
+| [Vulnerability lookup (OSV)](https://diogoneno.github.io/opskit/#/osv) | Security | Check package-lock.json, requirements.txt or a package list against OSV.dev. **Network:** off by default; opt-in dialog. Once enabled, sends package ecosystem, name and version to OSV.dev (or your own endpoint), on click. |
 | [SLO & error budget](https://diogoneno.github.io/opskit/#/slo) | Reliability | Allowed downtime for an SLO target, burn rate and multi-window alert thresholds. |
 <!-- tools:end -->
 
@@ -45,10 +45,17 @@ The table is generated from `src/tools/registry.ts` by `npm run readme:tools -- 
 - No backend, no analytics, no cookies, no third-party scripts or fonts. A Content-Security-Policy is set on the built page.
 - Input is processed in the page and never stored or sent anywhere.
 - Exactly two tools can use the network, and only when you click their button:
-  - **Vulnerability lookup (OSV)** sends package ecosystem, name and version — nothing else — to `api.osv.dev`. It says so above the button.
-  - **HTTP request builder** sends the request you build to the URL you typed, directly from your browser (no proxy).
+  - **Vulnerability lookup (OSV)** is a third-party integration that is **off by default**. Nothing is sent until you
+    opt in: the first time you press *Look up*, a dialog shows exactly what would be sent (package ecosystem, name and
+    version — no cookies, no identifiers) and where (`https://api.osv.dev/v1/query` by default, editable so you can use a
+    self-hosted OSV instance or a proxy). *Enable and look up* stores that choice in this browser's `localStorage`
+    (key `opskit.osv.integration`); *Cancel* sends nothing. *Disable integration* on the page turns it off again.
+  - **HTTP request builder** sends the request you build to the URL you typed, directly from your browser (no proxy),
+    only when you press *Send request (leaves the browser)*.
 - This is enforced by a test (`src/test/network.test.ts`) that scans every source file for network APIs and renders
   every page with `fetch`/`XMLHttpRequest`/`WebSocket`/`EventSource`/`sendBeacon` instrumented, expecting zero calls.
+  The same test clicks *Look up* on the OSV page: with no consent stored it expects zero requests and the dialog;
+  with consent stored, exactly one request to the configured endpoint.
 
 ## Keyboard shortcuts
 

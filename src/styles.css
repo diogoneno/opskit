@@ -142,3 +142,10 @@ del { background: var(--del-bg); }
   .split { grid-template-columns: minmax(0, 1fr); }
   .topbar kbd { display: none; }
 }
+.integration-state { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgb(0 0 0 / 0.55); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.modal { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; width: min(36rem, 100%); max-height: calc(100vh - 2rem); overflow: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+.modal h2 { margin: 0; font-size: 1.15rem; }
+.modal p { margin: 0; }
+.modal input { font: inherit; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg, var(--panel)); color: var(--text); width: 100%; box-sizing: border-box; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; margin-top: 0.5rem; }

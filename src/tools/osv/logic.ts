@@ -68,20 +68,11 @@ export function parseInput(text: string): Parsed {
   return { format: pip === packages.length && pip ? 'requirements.txt' : 'package list', packages, skipped };
 }
 
-export const OSV_API = 'https://api.osv.dev/v1';
-export const BATCH = 1000; // OSV querybatch limit
+export const OSV_DEFAULT_ENDPOINT = 'https://api.osv.dev/v1/query';
 
-export function batchBodies(pkgs: Pkg[]) {
-  const out = [];
-  for (let i = 0; i < pkgs.length; i += BATCH) {
-    out.push({ queries: pkgs.slice(i, i + BATCH).map((p) => ({ package: { name: p.name, ecosystem: p.ecosystem }, version: p.version })) });
-  }
-  return out;
-}
+/** The one request body OSV's /v1/query takes: ecosystem, name and version. Nothing else is ever added. */
+export const queryBody = (p: Pkg) => ({ package: { name: p.name, ecosystem: p.ecosystem }, version: p.version });
 
-export interface VulnRef {
-  id: string;
-}
 export interface VulnDetail {
   id: string;
   summary?: string;
@@ -92,13 +83,52 @@ export interface VulnDetail {
 
 export interface Finding {
   pkg: Pkg;
-  ids: string[];
+  vulns: VulnDetail[];
 }
 
-export function mergeResults(pkgs: Pkg[], responses: { results: { vulns?: VulnRef[] }[] }[]): Finding[] {
-  const results = responses.flatMap((r) => r.results);
-  if (results.length !== pkgs.length) throw new Error(`OSV returned ${results.length} results for ${pkgs.length} packages`);
-  return pkgs.map((pkg, i) => ({ pkg, ids: (results[i].vulns ?? []).map((v) => v.id) })).filter((f) => f.ids.length);
+// ---- Opt-in consent for the third-party integration (stored in this browser only) ----
+
+export const OSV_CONSENT_KEY = 'opskit.osv.integration';
+
+export interface OsvConsent {
+  enabled: true;
+  endpoint: string;
+}
+
+/** Returns the endpoint as a URL string if it is an absolute http(s) URL, else null. */
+export function validEndpoint(input: string): string | null {
+  try {
+    const u = new URL(input.trim());
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+export function readOsvConsent(): OsvConsent | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(OSV_CONSENT_KEY) ?? 'null') as Partial<OsvConsent> | null;
+    const endpoint = v?.enabled === true && typeof v.endpoint === 'string' ? validEndpoint(v.endpoint) : null;
+    return endpoint ? { enabled: true, endpoint } : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveOsvConsent(endpoint: string): OsvConsent {
+  const valid = validEndpoint(endpoint);
+  if (!valid) throw new Error('Endpoint must be an absolute http(s) URL');
+  const consent: OsvConsent = { enabled: true, endpoint: valid };
+  localStorage.setItem(OSV_CONSENT_KEY, JSON.stringify(consent));
+  return consent;
+}
+
+export function clearOsvConsent() {
+  try {
+    localStorage.removeItem(OSV_CONSENT_KEY);
+  } catch {
+    // storage unavailable: nothing was stored
+  }
 }
 
 export const severityOf = (v?: VulnDetail) => v?.database_specific?.severity ?? v?.severity?.[0]?.type ?? 'unknown';

@@ -1,6 +1,8 @@
-import { createElement } from 'react';
+// @vitest-environment jsdom
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tools } from '../tools/registry';
 
 // ---- Static check: which source files can touch the network at all? ----
@@ -76,9 +78,126 @@ describe('runtime: nothing fetches on load or render', () => {
     expect(rendered).toBe(tools.length);
     expect(calls).toEqual([]);
   });
-  it('control: the instrumentation catches a real call (OSV check through the global fetch)', async () => {
-    const { checkPackages } = await import('../tools/osv/client');
-    await expect(checkPackages([{ ecosystem: 'npm', name: 'x', version: '1.0.0' }])).rejects.toThrow(/network blocked/);
-    expect(calls).toEqual(['fetch https://api.osv.dev/v1/querybatch']);
+  it('control: the instrumentation catches a real call (OSV lookup through the global fetch, consent stored)', async () => {
+    const { lookup } = await import('../tools/osv/client');
+    const { saveOsvConsent, clearOsvConsent } = await import('../tools/osv/logic');
+    calls.length = 0;
+    saveOsvConsent('https://api.osv.dev/v1/query');
+    try {
+      await expect(lookup([{ ecosystem: 'npm', name: 'x', version: '1.0.0' }])).rejects.toThrow(/network blocked/);
+    } finally {
+      clearOsvConsent();
+    }
+    expect(calls).toEqual(['fetch https://api.osv.dev/v1/query']);
+  });
+  it('the OSV request function refuses to run without consent', async () => {
+    const { osvQuery, ConsentRequiredError } = await import('../tools/osv/client');
+    calls.length = 0;
+    await expect(osvQuery({ ecosystem: 'npm', name: 'x', version: '1.0.0' })).rejects.toBeInstanceOf(ConsentRequiredError);
+    expect(calls).toEqual([]);
+  });
+});
+
+// ---- Runtime check: the OSV page asks before any third-party request ----
+
+describe('runtime: OSV page is opt-in', () => {
+  let host: HTMLDivElement;
+  let root: Root;
+  const ENDPOINT = 'https://osv-proxy.example/v1/query';
+  const buttons = () => [...host.querySelectorAll('button')];
+  const button = (text: string) => {
+    const b = buttons().find((x) => x.textContent === text);
+    if (!b) throw new Error(`no button "${text}"; have: ${buttons().map((x) => x.textContent).join(' | ')}`);
+    return b;
+  };
+  const dialog = () => host.querySelector('[role="dialog"]');
+  const click = async (el: HTMLElement) => {
+    await act(async () => {
+      el.click();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  const setInput = async (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(el, value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+  const render = async () => {
+    const { default: OsvPage } = await import('../tools/osv/Page');
+    await act(async () => root.render(createElement(OsvPage)));
+    await setInput(host.querySelector('textarea')!, 'npm lodash 4.17.20'); // exactly one package
+  };
+
+  beforeEach(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    localStorage.clear();
+    calls.length = 0;
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+    localStorage.clear();
+  });
+
+  it('no consent: Look up makes 0 requests and opens a labelled modal dialog', async () => {
+    await render();
+    expect(host.textContent).toContain('Integration: off — no requests are made');
+    await click(button('Look up'));
+    expect(calls).toEqual([]);
+    const d = dialog();
+    expect(d).not.toBeNull();
+    expect(d!.getAttribute('aria-modal')).toBe('true');
+    expect(document.getElementById(d!.getAttribute('aria-labelledby')!)?.textContent).toBe('Third-party integration: OSV.dev');
+    expect(d!.textContent).toMatch(/ecosystem.*package name.*version/);
+    expect(d!.querySelector('input')!.value).toBe('https://api.osv.dev/v1/query');
+    expect(d!.querySelector('a[href^="https://"]')).not.toBeNull();
+    expect(d!.contains(document.activeElement)).toBe(true);
+    expect(localStorage.length).toBe(0);
+  });
+  it('Cancel (and Esc) close the dialog with 0 requests and nothing stored', async () => {
+    await render();
+    await click(button('Look up'));
+    await click(button('Cancel'));
+    expect(dialog()).toBeNull();
+    await click(button('Look up'));
+    await act(async () => {
+      dialog()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(dialog()).toBeNull();
+    expect(calls).toEqual([]);
+    expect(localStorage.length).toBe(0);
+  });
+  it('consent stored: Look up makes exactly 1 request, to the configured endpoint, with no dialog', async () => {
+    localStorage.setItem('opskit.osv.integration', JSON.stringify({ enabled: true, endpoint: ENDPOINT }));
+    await render();
+    expect(host.textContent).toContain(`Integration: on → ${ENDPOINT}`);
+    await click(button('Look up'));
+    expect(dialog()).toBeNull();
+    expect(calls).toEqual([`fetch ${ENDPOINT}`]);
+  });
+  it('"Enable and look up" stores consent under one key and makes exactly 1 request to the edited endpoint', async () => {
+    await render();
+    await click(button('Look up'));
+    await setInput(dialog()!.querySelector('input')!, ENDPOINT);
+    await click(button('Enable and look up'));
+    expect(dialog()).toBeNull();
+    expect(JSON.parse(localStorage.getItem('opskit.osv.integration')!)).toEqual({ enabled: true, endpoint: ENDPOINT });
+    expect(localStorage.length).toBe(1);
+    expect(calls).toEqual([`fetch ${ENDPOINT}`]);
+  });
+  it('"Disable integration" clears consent and the next Look up asks again with 0 requests', async () => {
+    localStorage.setItem('opskit.osv.integration', JSON.stringify({ enabled: true, endpoint: ENDPOINT }));
+    await render();
+    await click(button('Disable integration'));
+    expect(localStorage.length).toBe(0);
+    expect(host.textContent).toContain('Integration: off — no requests are made');
+    await click(button('Look up'));
+    expect(dialog()).not.toBeNull();
+    expect(calls).toEqual([]);
   });
 });

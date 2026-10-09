@@ -38,7 +38,7 @@ export default function HttpPage() {
     <>
       <ToolHeader slug="http">
         <p className="notice" role="note">
-          <strong>Network:</strong> nothing is sent until you press <em>Send</em>. Then your browser sends this request directly to
+          <strong>Network:</strong> nothing is sent until you press <em>Send request</em>. Then your browser sends this request directly to
           the URL you entered — no proxy, no third party. Cookies are not included.
         </p>
       </ToolHeader>
@@ -51,7 +51,7 @@ export default function HttpPage() {
       <ErrorLine error={curl.ok ? null : curl.error} />
       <Output label="curl command" value={curl.ok ? curl.value : ''} rows={3} />
       <button type="button" className="btn primary" disabled={!curl.ok || busy} onClick={onSend}>
-        {busy ? 'Sending…' : `Send ${method} to this URL`}
+        {busy ? 'Sending…' : 'Send request (leaves the browser)'}
       </button>
       <ErrorLine error={error} />
       {res && (
