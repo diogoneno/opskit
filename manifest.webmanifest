@@ -1,0 +1,1 @@
+{"name":"opskit","short_name":"opskit","description":"Client-side DevOps/SRE toolbox. Your data never leaves the browser.","start_url":"/opskit/","display":"standalone","background_color":"#0f172a","theme_color":"#0f172a","lang":"en","scope":"/opskit/","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
