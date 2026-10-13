@@ -1,8 +1,45 @@
 {
   "name": "opskit",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "A client-side DevOps/SRE toolbox. Your data never leaves the browser.",
+  "description": "Keyboard-first DevOps/SRE toolbox that runs entirely in your browser: JSON/YAML/JMESPath, CIDR, cron, JWT, hashes, Kubernetes Secret, docker run → Compose, SLO error budget and more. Nothing leaves the tab; works offline.",
+  "homepage": "https://diogoneno.github.io/opskit/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diogoneno/opskit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/diogoneno/opskit/issues"
+  },
+  "author": "Diogo Neno",
+  "keywords": [
+    "devops",
+    "sre",
+    "developer-tools",
+    "toolbox",
+    "client-side",
+    "offline",
+    "pwa",
+    "privacy",
+    "json",
+    "yaml",
+    "jmespath",
+    "cidr",
+    "cron",
+    "jwt",
+    "sha256",
+    "kubernetes",
+    "docker-compose",
+    "slo",
+    "error-budget",
+    "osv",
+    "react",
+    "vite",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
   "license": "MIT",
   "type": "module",
   "scripts": {
