@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- README hero (screenshots in `docs/screenshots/`, taken from a local `vite preview` with headless Chromium),
+  a "How is this different" section and a 3-line local run.
+- Open Graph / Twitter card tags and `public/og.png` (1280×640) so shared links get a preview.
+- Lightweight issue templates (bug report, tool request).
+- `package.json`: `homepage`, `repository`, `bugs`, `keywords`, `author`, `engines`; version aligned with this file.
+
 ## 0.1.1 — 2026-10-09
 
 ### Changed

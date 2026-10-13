@@ -1,10 +1,35 @@
-# opskit
+<h1 align="center">
+  <img src="public/icon.svg" width="40" height="40" alt="" align="absmiddle"> opskit
+</h1>
 
-**A keyboard-first DevOps/SRE toolbox that runs entirely in your browser — your data never leaves the tab.**
+<p align="center">
+  <strong>18 DevOps/SRE tools that run entirely in your browser. No backend, no analytics, works offline.</strong>
+</p>
 
-Live: <https://diogoneno.github.io/opskit/> (to be enabled — see [Deploy](#deploy))
+<p align="center">
+  <a href="https://diogoneno.github.io/opskit/"><img alt="Open the live app" src="https://img.shields.io/badge/live_app-diogoneno.github.io%2Fopskit-0b5cad?style=for-the-badge"></a>
+</p>
 
-_Screenshot pending._
+<p align="center">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-green"></a>
+  <img alt="Client-side only" src="https://img.shields.io/badge/backend-none-blue">
+  <img alt="Installable PWA" src="https://img.shields.io/badge/PWA-installable-5a0fc8">
+  <img alt="Runtime dependencies" src="https://img.shields.io/badge/runtime_deps-5-informational">
+</p>
+
+<p align="center">
+  <a href="https://diogoneno.github.io/opskit/"><img src="docs/screenshots/home-dark.png" width="800" alt="opskit home page in dark mode: a sidebar of 18 tools grouped by category and a grid of tool cards"></a>
+</p>
+
+**[Open the live app →](https://diogoneno.github.io/opskit/)** · press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> and type the tool you need.
+
+Or run it on your machine (Node 22.18+):
+
+```sh
+git clone https://github.com/diogoneno/opskit.git && cd opskit
+npm ci
+npm run dev        # http://localhost:5173/opskit/
+```
 
 ## Why
 
@@ -13,7 +38,10 @@ two CIDRs overlap, turning a `docker run` into Compose, working out how much err
 web tools for these send your input to someone else's server. opskit does not: every tool is a pure function running
 in the page, it works offline once loaded (installable PWA), and it has no backend at all.
 
-## Tools
+**Who it is for:** SREs, platform and DevOps engineers, and anyone on call who would rather not paste a production
+JWT, a Kubernetes Secret or a customer CIDR into a random website.
+
+## What's inside
 
 The table is generated from `src/tools/registry.ts` by `npm run readme:tools -- --write`; a test fails if it drifts.
 
@@ -39,6 +67,31 @@ The table is generated from `src/tools/registry.ts` by `npm run readme:tools -- 
 | [Vulnerability lookup (OSV)](https://diogoneno.github.io/opskit/#/osv) | Security | Check package-lock.json, requirements.txt or a package list against OSV.dev. **Network:** off by default; opt-in dialog. Once enabled, sends package ecosystem, name and version to OSV.dev (or your own endpoint), on click. |
 | [SLO & error budget](https://diogoneno.github.io/opskit/#/slo) | Reliability | Allowed downtime for an SLO target, burn rate and multi-window alert thresholds. |
 <!-- tools:end -->
+
+## Screenshots
+
+| Cron explainer: next runs, systemd `OnCalendar=` and a CronJob manifest | CIDR calculator: ranges, masks and overlap check |
+|---|---|
+| [![Cron explainer](docs/screenshots/cron.png)](https://diogoneno.github.io/opskit/#/cron) | [![CIDR calculator](docs/screenshots/cidr.png)](https://diogoneno.github.io/opskit/#/cidr) |
+| **JWT decoder: claims, expiry as dates, header and payload** | **Command palette (<kbd>Ctrl</kbd> <kbd>K</kbd>): search by name or keyword** |
+| [![JWT decoder](docs/screenshots/jwt.png)](https://diogoneno.github.io/opskit/#/jwt) | [![Command palette](docs/screenshots/palette.png)](https://diogoneno.github.io/opskit/) |
+
+Light mode follows your OS (`prefers-color-scheme`); the layout collapses to a single column with a menu button
+below 768 px. See [`docs/screenshots/`](docs/screenshots/) for the light and mobile shots.
+
+## How is this different from it-tools or CyberChef?
+
+Those are excellent and much bigger. opskit is deliberately small and ops-shaped:
+
+- **Ops tasks, not general data wrangling:** SLO/error-budget and burn-rate alert maths, cron → systemd `OnCalendar=`
+  and Kubernetes `CronJob`, CIDR overlap for pod/service ranges, `docker run` → Compose, Kubernetes Secret
+  encode/decode, RE2 compatibility notes for Prometheus/Loki regexes, and JMESPath (the `aws --query` language).
+- **Provably no network traffic:** a test instruments `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and
+  `sendBeacon`, renders every page and expects zero calls. The two tools that can send (HTTP builder, OSV lookup) do so
+  only on an explicit click; OSV is off until you opt in through a dialog that shows exactly what would be sent.
+- **Nothing to host:** a static `dist/` on GitHub Pages, a Content-Security-Policy on the built page, five runtime
+  dependencies (`react`, `react-dom`, `yaml`, `diff`, `jmespath`), each tool a lazy-loaded chunk.
+- **Every tool has unit tests with known vectors**, and every input has a label (checked by a test that renders each page).
 
 ## Privacy
 
@@ -67,7 +120,7 @@ The table is generated from `src/tools/registry.ts` by `npm run readme:tools -- 
 | <kbd>/</kbd> | Focus the first input of the current tool |
 | <kbd>Tab</kbd> | Every control, copy button and link is reachable, with a visible focus ring |
 
-## Local development
+## Development
 
 Requires Node 22.18+ (24 recommended).
 
@@ -86,9 +139,12 @@ npm run build      # type-check + production build into dist/
 2. Add one entry to `src/tools/registry.ts`. The router, sidebar, palette, home page and README table all read from it.
 3. Run `npm run readme:tools -- --write` and `npm test`. The registry test fails if the page or test file is missing.
 
+Ideas for new tools are welcome: open a [tool request](https://github.com/diogoneno/opskit/issues/new?template=tool_request.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the ground rules (client-side only, pure functions, tests first).
+
 ## Deploy
 
-GitHub Pages, from a `gh-pages` branch (no CI workflow needed):
+GitHub Pages, from a `gh-pages` branch (no CI workflow, by design):
 
 ```sh
 npm run deploy     # builds, then pushes dist/ to the gh-pages branch with the gh-pages package
@@ -104,6 +160,7 @@ links work without a 404 fallback.
 - Each tool is a lazy-loaded chunk; the shell loads only the registry metadata.
 - Regexes run in a Web Worker with a timeout, so catastrophic backtracking cannot freeze the page.
 - JSON query uses **JMESPath** (the `aws --query` language) via the `jmespath` package, which is pure JavaScript and runs in the browser.
+- Screenshots in `docs/screenshots/` are taken from a local `vite preview` with headless Chromium at 1280×800 (mobile: 390×844 @2x).
 
 ## Licence
 
